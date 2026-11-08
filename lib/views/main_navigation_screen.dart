@@ -1,19 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/theme/app_theme.dart';
+import '../providers/app_providers.dart';
+import '../services/update_service.dart';
 import 'hosts/hosts_screen.dart';
 import 'keys/key_vault_screen.dart';
 import 'settings/settings_screen.dart';
 import 'snippets/snippets_screen.dart';
 
-class MainNavigationScreen extends StatefulWidget {
+class MainNavigationScreen extends ConsumerStatefulWidget {
   const MainNavigationScreen({super.key});
 
   @override
-  State<MainNavigationScreen> createState() => _MainNavigationScreenState();
+  ConsumerState<MainNavigationScreen> createState() => _MainNavigationScreenState();
 }
 
-class _MainNavigationScreenState extends State<MainNavigationScreen> {
+class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
   int _currentIndex = 0;
 
   final List<Widget> _pages = const [
@@ -24,7 +27,28 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAutoUpdate();
+    });
+  }
+
+  Future<void> _checkAutoUpdate() async {
+    final autoCheck = ref.read(autoUpdateProvider);
+    if (!autoCheck) return;
+
+    final updateInfo = await UpdateService.checkUpdate();
+    if (updateInfo != null && mounted) {
+      final strings = ref.read(stringsProvider);
+      UpdateService.showUpdateDialog(context, updateInfo, strings);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final strings = ref.watch(stringsProvider);
+
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
@@ -38,26 +62,26 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         onDestinationSelected: (index) {
           setState(() => _currentIndex = index);
         },
-        destinations: const [
+        destinations: [
           NavigationDestination(
-            icon: Icon(Icons.dns_outlined, color: AppTheme.textMuted),
-            selectedIcon: Icon(Icons.dns_rounded, color: AppTheme.primary),
-            label: 'Hosts',
+            icon: const Icon(Icons.dns_outlined, color: AppTheme.textMuted),
+            selectedIcon: const Icon(Icons.dns_rounded, color: AppTheme.primary),
+            label: strings.navHosts,
           ),
           NavigationDestination(
-            icon: Icon(Icons.vpn_key_outlined, color: AppTheme.textMuted),
-            selectedIcon: Icon(Icons.vpn_key_rounded, color: AppTheme.primary),
-            label: 'Keys',
+            icon: const Icon(Icons.vpn_key_outlined, color: AppTheme.textMuted),
+            selectedIcon: const Icon(Icons.vpn_key_rounded, color: AppTheme.primary),
+            label: strings.navKeys,
           ),
           NavigationDestination(
-            icon: Icon(Icons.bolt_outlined, color: AppTheme.textMuted),
-            selectedIcon: Icon(Icons.bolt_rounded, color: AppTheme.primary),
-            label: 'Snippets',
+            icon: const Icon(Icons.bolt_outlined, color: AppTheme.textMuted),
+            selectedIcon: const Icon(Icons.bolt_rounded, color: AppTheme.primary),
+            label: strings.navSnippets,
           ),
           NavigationDestination(
-            icon: Icon(Icons.settings_outlined, color: AppTheme.textMuted),
-            selectedIcon: Icon(Icons.settings_rounded, color: AppTheme.primary),
-            label: 'Settings',
+            icon: const Icon(Icons.settings_outlined, color: AppTheme.textMuted),
+            selectedIcon: const Icon(Icons.settings_rounded, color: AppTheme.primary),
+            label: strings.navSettings,
           ),
         ],
       ),

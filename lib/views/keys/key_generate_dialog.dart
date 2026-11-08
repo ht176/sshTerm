@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/localization/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/ssh_key_pair_model.dart';
 import '../../providers/app_providers.dart';
@@ -46,7 +47,7 @@ class _KeyGenerateDialogState extends ConsumerState<KeyGenerateDialog> {
     super.dispose();
   }
 
-  Future<void> _submit() async {
+  Future<void> _submit(AppStrings strings) async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -92,7 +93,7 @@ class _KeyGenerateDialogState extends ConsumerState<KeyGenerateDialog> {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Key "${keyModel.title}" successfully created!'),
+            content: Text('${keyModel.title} OK'),
             backgroundColor: AppTheme.accentGreen,
           ),
         );
@@ -109,6 +110,8 @@ class _KeyGenerateDialogState extends ConsumerState<KeyGenerateDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = ref.watch(stringsProvider);
+
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -129,7 +132,7 @@ class _KeyGenerateDialogState extends ConsumerState<KeyGenerateDialog> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      _isImportMode ? 'Import SSH Key' : 'Generate SSH Key',
+                      _isImportMode ? strings.importKey : strings.newKeyPair,
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -149,7 +152,7 @@ class _KeyGenerateDialogState extends ConsumerState<KeyGenerateDialog> {
                   children: [
                     Expanded(
                       child: ChoiceChip(
-                        label: const Center(child: Text('Generate New')),
+                        label: Center(child: Text(strings.generateNew)),
                         selected: !_isImportMode,
                         onSelected: (val) {
                           if (val) setState(() => _isImportMode = false);
@@ -159,7 +162,7 @@ class _KeyGenerateDialogState extends ConsumerState<KeyGenerateDialog> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: ChoiceChip(
-                        label: const Center(child: Text('Import Existing')),
+                        label: Center(child: Text(strings.importExisting)),
                         selected: _isImportMode,
                         onSelected: (val) {
                           if (val) setState(() => _isImportMode = true);
@@ -173,18 +176,18 @@ class _KeyGenerateDialogState extends ConsumerState<KeyGenerateDialog> {
                 // Key Title
                 CustomTextField(
                   controller: _titleController,
-                  label: 'Key Title / Alias',
-                  hint: 'e.g. id_ed25519_prod, macbook_key',
+                  label: strings.keyTitle,
+                  hint: strings.keyTitleHint,
                   prefixIcon: Icons.vpn_key_outlined,
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                  validator: (v) => v == null || v.trim().isEmpty ? strings.required : null,
                 ),
                 const SizedBox(height: 14),
 
                 if (!_isImportMode) ...[
                   // Algorithm Selection
-                  const Text(
-                    'Key Type / Algorithm',
-                    style: TextStyle(
+                  Text(
+                    strings.keyAlgorithm,
+                    style: const TextStyle(
                       color: AppTheme.textSecondary,
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -230,17 +233,17 @@ class _KeyGenerateDialogState extends ConsumerState<KeyGenerateDialog> {
                                         color: AppTheme.accentGreen.withValues(alpha: 0.2),
                                         borderRadius: BorderRadius.circular(4),
                                       ),
-                                      child: const Text(
-                                        'Recommended',
-                                        style: TextStyle(fontSize: 9, color: AppTheme.accentGreen),
+                                      child: Text(
+                                        strings.recommended,
+                                        style: const TextStyle(fontSize: 9, color: AppTheme.accentGreen),
                                       ),
                                     ),
                                   ],
                                 ),
                                 const SizedBox(height: 4),
-                                const Text(
-                                  'Fastest & most secure',
-                                  style: TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                                Text(
+                                  strings.ed25519Desc,
+                                  style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
                                 ),
                               ],
                             ),
@@ -277,9 +280,9 @@ class _KeyGenerateDialogState extends ConsumerState<KeyGenerateDialog> {
                                   ),
                                 ),
                                 const SizedBox(height: 4),
-                                const Text(
-                                  'Legacy compatibility',
-                                  style: TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                                Text(
+                                  strings.rsaDesc,
+                                  style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
                                 ),
                               ],
                             ),
@@ -292,7 +295,7 @@ class _KeyGenerateDialogState extends ConsumerState<KeyGenerateDialog> {
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        const Text('Key Size: ', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                        Text(strings.keySize, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
                         ChoiceChip(
                           label: const Text('2048-bit'),
                           selected: _rsaBits == 2048,
@@ -312,10 +315,10 @@ class _KeyGenerateDialogState extends ConsumerState<KeyGenerateDialog> {
                   // Import PEM box
                   CustomTextField(
                     controller: _pemImportController,
-                    label: 'Private Key PEM Content',
-                    hint: '-----BEGIN OPENSSH PRIVATE KEY-----\n...\n-----END OPENSSH PRIVATE KEY-----',
+                    label: strings.pemContent,
+                    hint: strings.pemHint,
                     maxLines: 5,
-                    validator: (v) => v == null || v.trim().isEmpty ? 'Please paste your private key' : null,
+                    validator: (v) => v == null || v.trim().isEmpty ? strings.required : null,
                   ),
                   const SizedBox(height: 14),
                 ],
@@ -323,8 +326,8 @@ class _KeyGenerateDialogState extends ConsumerState<KeyGenerateDialog> {
                 // Optional Passphrase
                 CustomTextField(
                   controller: _passphraseController,
-                  label: 'Passphrase (Optional)',
-                  hint: 'Leave empty for no passphrase',
+                  label: strings.passphraseOptional,
+                  hint: strings.passphraseHint,
                   obscureText: true,
                   prefixIcon: Icons.lock_outline_rounded,
                 ),
@@ -348,14 +351,14 @@ class _KeyGenerateDialogState extends ConsumerState<KeyGenerateDialog> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _isGenerating ? null : _submit,
+                    onPressed: _isGenerating ? null : () => _submit(strings),
                     child: _isGenerating
                         ? const SizedBox(
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
-                        : Text(_isImportMode ? 'Import Key' : 'Generate & Save'),
+                        : Text(_isImportMode ? strings.importKey : strings.save),
                   ),
                 ),
                 const SizedBox(height: 10),

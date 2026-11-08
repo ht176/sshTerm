@@ -1,27 +1,106 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/localization/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/app_providers.dart';
+import '../../services/update_service.dart';
 
-class SettingsScreen extends ConsumerWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  String _currentVersion = '1.0.0';
+  bool _isCheckingUpdate = false;
+
+  @override
+  void initState() {
+    super.initState();
+    UpdateService.getCurrentVersion().then((v) {
+      if (mounted) setState(() => _currentVersion = v);
+    });
+  }
+
+  Future<void> _checkUpdateManual(AppStrings strings) async {
+    setState(() => _isCheckingUpdate = true);
+    final updateInfo = await UpdateService.checkUpdate();
+    if (!mounted) return;
+    setState(() => _isCheckingUpdate = false);
+
+    if (updateInfo != null) {
+      UpdateService.showUpdateDialog(context, updateInfo, strings);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(strings.alreadyLatest),
+          backgroundColor: AppTheme.accentGreen,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = ref.watch(stringsProvider);
+    final currentLanguage = ref.watch(languageProvider);
+    final autoCheck = ref.watch(autoUpdateProvider);
     final currentFontSize = ref.watch(fontSizeProvider);
     final storage = ref.watch(storageServiceProvider);
     final knownHostsCount = storage.getKnownHosts().length;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Settings'),
+        title: Text(strings.navSettings),
       ),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 12),
         children: [
+          // Section: Language
+          _buildSectionHeader(strings.languageSetting),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.language_rounded, color: AppTheme.primaryLight),
+              title: Text(strings.languageSetting),
+              subtitle: Text(
+                currentLanguage == AppLanguage.zh
+                    ? strings.languageZh
+                    : (currentLanguage == AppLanguage.en ? strings.languageEn : strings.languageSystem),
+              ),
+              trailing: DropdownButton<AppLanguage>(
+                value: currentLanguage,
+                underline: const SizedBox(),
+                dropdownColor: AppTheme.surfaceElevated,
+                items: [
+                  DropdownMenuItem(
+                    value: AppLanguage.zh,
+                    child: Text(strings.languageZh, style: const TextStyle(fontSize: 14)),
+                  ),
+                  DropdownMenuItem(
+                    value: AppLanguage.en,
+                    child: Text(strings.languageEn, style: const TextStyle(fontSize: 14)),
+                  ),
+                  DropdownMenuItem(
+                    value: AppLanguage.system,
+                    child: Text(strings.languageSystem, style: const TextStyle(fontSize: 14)),
+                  ),
+                ],
+                onChanged: (lang) {
+                  if (lang != null) {
+                    ref.read(languageProvider.notifier).setLanguage(lang);
+                  }
+                },
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
           // Section: Terminal Appearance
-          _buildSectionHeader('Terminal Appearance'),
+          _buildSectionHeader(strings.terminalAppearance),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -31,9 +110,9 @@ class SettingsScreen extends ConsumerWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Font Size',
-                        style: TextStyle(
+                      Text(
+                        strings.fontSize,
+                        style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
                           color: AppTheme.textPrimary,
@@ -89,26 +168,26 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 12),
 
           // Section: Security
-          _buildSectionHeader('Security & Host Verification'),
+          _buildSectionHeader(strings.securitySettings),
           Card(
             child: Column(
               children: [
                 ListTile(
                   leading: const Icon(Icons.fingerprint_rounded, color: AppTheme.primaryLight),
-                  title: const Text('Known Host Fingerprints'),
-                  subtitle: Text('$knownHostsCount trusted host keys in store'),
+                  title: Text(strings.knownHosts),
+                  subtitle: Text(strings.knownHostsCount(knownHostsCount)),
                   trailing: TextButton(
                     onPressed: knownHostsCount == 0
                         ? null
-                        : () => _clearKnownHosts(context, ref),
-                    child: const Text('Clear', style: TextStyle(color: AppTheme.accentRed)),
+                        : () => _clearKnownHosts(context, strings),
+                    child: Text(strings.clearKnownHosts, style: const TextStyle(color: AppTheme.accentRed)),
                   ),
                 ),
                 const Divider(height: 1, color: AppTheme.surfaceBorder),
-                const ListTile(
-                  leading: Icon(Icons.lock_outline_rounded, color: AppTheme.accentGreen),
-                  title: Text('Key Storage Encryption'),
-                  subtitle: Text('Private keys secured by iOS Keychain / Android Keystore'),
+                ListTile(
+                  leading: const Icon(Icons.lock_outline_rounded, color: AppTheme.accentGreen),
+                  title: Text(strings.keyEncryptionNotice),
+                  subtitle: Text(strings.keyEncryptionDesc),
                 ),
               ],
             ),
@@ -116,22 +195,42 @@ class SettingsScreen extends ConsumerWidget {
 
           const SizedBox(height: 12),
 
-          // Section: About
-          _buildSectionHeader('About'),
+          // Section: Updates & About
+          _buildSectionHeader(strings.aboutSection),
           Card(
             child: Column(
               children: [
-                const ListTile(
-                  leading: Icon(Icons.info_outline_rounded, color: AppTheme.primaryLight),
-                  title: Text('sshTerm Mobile'),
-                  subtitle: Text('Version 1.0.0 (Build 1) • Open Source Termius Alternative'),
+                ListTile(
+                  leading: const Icon(Icons.info_outline_rounded, color: AppTheme.primaryLight),
+                  title: const Text('sshTerm Mobile'),
+                  subtitle: Text('${strings.currentVersion}: v$_currentVersion'),
+                  trailing: _isCheckingUpdate
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : TextButton.icon(
+                          icon: const Icon(Icons.refresh_rounded, size: 16),
+                          label: Text(strings.checkForUpdates),
+                          onPressed: () => _checkUpdateManual(strings),
+                        ),
                 ),
                 const Divider(height: 1, color: AppTheme.surfaceBorder),
-                ListTile(
-                  leading: const Icon(Icons.code_rounded, color: AppTheme.accentPurple),
-                  title: const Text('Core Engines'),
-                  subtitle: const Text('xterm.dart 4.0 (Canvas Engine) + dartssh2 4.1 (Pure SSHv2)'),
-                  onTap: () {},
+                SwitchListTile(
+                  secondary: const Icon(Icons.autorenew_rounded, color: AppTheme.accentOrange),
+                  title: Text(strings.autoCheckUpdates),
+                  value: autoCheck,
+                  activeThumbColor: AppTheme.primary,
+                  onChanged: (val) {
+                    ref.read(autoUpdateProvider.notifier).setAutoUpdate(val);
+                  },
+                ),
+                const Divider(height: 1, color: AppTheme.surfaceBorder),
+                const ListTile(
+                  leading: Icon(Icons.code_rounded, color: AppTheme.accentPurple),
+                  title: Text('Core Engines'),
+                  subtitle: Text('xterm.dart 4.0 (Canvas Engine) + dartssh2 4.1 (Pure SSHv2)'),
                 ),
               ],
             ),
@@ -156,17 +255,17 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  void _clearKnownHosts(BuildContext context, WidgetRef ref) {
+  void _clearKnownHosts(BuildContext context, AppStrings strings) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.surface,
-        title: const Text('Clear Known Hosts'),
-        content: const Text('All saved host fingerprints will be forgotten. You will be prompted to re-verify host authenticity on next connection.'),
+        title: Text(strings.clearKnownHosts),
+        content: Text(strings.clearKnownHostsConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: AppTheme.textMuted)),
+            child: Text(strings.cancel, style: const TextStyle(color: AppTheme.textMuted)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentRed),
@@ -175,12 +274,13 @@ class SettingsScreen extends ConsumerWidget {
               await storage.addKnownHost('__reset__', '');
               if (context.mounted) {
                 Navigator.pop(ctx);
+                setState(() {});
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Known hosts cache cleared.')),
                 );
               }
             },
-            child: const Text('Clear All'),
+            child: Text(strings.confirm),
           ),
         ],
       ),

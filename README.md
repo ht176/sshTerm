@@ -9,7 +9,13 @@
 
 ## ✨ Features
 
-- 🖥️ **Host Asset Management**:
+- 🌐 **Internationalization & Localization (国际化与中文支持)**:
+  - 默认支持 **简体中文** 与 **English**，可自由切换或跟随系统语言。
+  - 全屏文本、弹窗提示、帮助说明与快捷操作均深度本地化。
+- 🔄 **Auto-Update & Version Checker (自动检查更新)**:
+  - 深度集成 GitHub Releases API，支持启动时静默检查更新或在设置中手动一键检查。
+  - 弹出现代化更新日志弹窗，支持一键直链下载最新 Android Release APK 安装包。
+- 🖥️ **Host Asset Management (主机资产管理)**:
   - Organize Linux, Cloud VPS, NAS, macOS servers with custom tags, groups, and color markers.
   - Support for custom SSH ports and username presets.
   - Connection history tracking.

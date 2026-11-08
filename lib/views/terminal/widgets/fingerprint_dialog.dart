@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
 
 class FingerprintDialog extends StatelessWidget {
@@ -6,6 +7,7 @@ class FingerprintDialog extends StatelessWidget {
   final int port;
   final String keyType;
   final String fingerprint;
+  final AppStrings strings;
 
   const FingerprintDialog({
     super.key,
@@ -13,6 +15,7 @@ class FingerprintDialog extends StatelessWidget {
     required this.port,
     required this.keyType,
     required this.fingerprint,
+    required this.strings,
   });
 
   static Future<bool> show(
@@ -21,6 +24,7 @@ class FingerprintDialog extends StatelessWidget {
     required int port,
     required String keyType,
     required String fingerprint,
+    required AppStrings strings,
   }) async {
     final result = await showDialog<bool>(
       context: context,
@@ -30,6 +34,7 @@ class FingerprintDialog extends StatelessWidget {
         port: port,
         keyType: keyType,
         fingerprint: fingerprint,
+        strings: strings,
       ),
     );
     return result ?? false;
@@ -58,10 +63,10 @@ class FingerprintDialog extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Text(
-              'Host Authenticity Verification',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              strings.hostVerificationTitle,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -72,7 +77,7 @@ class FingerprintDialog extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'The authenticity of host "$hostname:$port" cannot be established automatically.',
+              strings.hostVerificationPrompt(hostname, port),
               style: const TextStyle(
                 color: AppTheme.textPrimary,
                 fontSize: 14,
@@ -131,14 +136,6 @@ class FingerprintDialog extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 14),
-            const Text(
-              'Are you sure you want to trust this host and continue connecting?',
-              style: TextStyle(
-                color: AppTheme.textMuted,
-                fontSize: 13,
-              ),
-            ),
           ],
         ),
       ),
@@ -146,7 +143,7 @@ class FingerprintDialog extends StatelessWidget {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cancel', style: TextStyle(color: AppTheme.textMuted)),
+          child: Text(strings.cancel, style: const TextStyle(color: AppTheme.textMuted)),
         ),
         ElevatedButton(
           onPressed: () => Navigator.of(context).pop(true),
@@ -156,7 +153,7 @@ class FingerprintDialog extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
           ),
-          child: const Text('Trust & Connect'),
+          child: Text(strings.trustAndConnect),
         ),
       ],
     );

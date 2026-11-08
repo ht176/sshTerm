@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../models/ssh_host.dart';
+import '../../../providers/app_providers.dart';
 
-class HostCard extends StatelessWidget {
+class HostCard extends ConsumerWidget {
   final SSHHost host;
   final VoidCallback onConnect;
   final VoidCallback onEdit;
@@ -19,7 +21,8 @@ class HostCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final strings = ref.watch(stringsProvider);
     final color = _parseColor(host.colorHex);
 
     return Card(
@@ -110,7 +113,7 @@ class HostCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          host.authType == AuthType.password ? 'Password' : 'Key Auth',
+                          host.authType == AuthType.password ? strings.authPassword : strings.authKey,
                           style: const TextStyle(
                             fontSize: 11,
                             color: AppTheme.textMuted,
@@ -138,7 +141,7 @@ class HostCard extends StatelessWidget {
               IconButton(
                 icon: const Icon(Icons.play_circle_fill_rounded, size: 32),
                 color: AppTheme.primary,
-                tooltip: 'Quick Connect',
+                tooltip: strings.quickConnect,
                 onPressed: onConnect,
               ),
 
@@ -150,23 +153,23 @@ class HostCard extends StatelessWidget {
                   if (val == 'delete') onDelete();
                 },
                 itemBuilder: (ctx) => [
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'edit',
                     child: Row(
                       children: [
-                        Icon(Icons.edit_rounded, size: 18, color: AppTheme.textSecondary),
-                        SizedBox(width: 10),
-                        Text('Edit Host'),
+                        const Icon(Icons.edit_rounded, size: 18, color: AppTheme.textSecondary),
+                        const SizedBox(width: 10),
+                        Text(strings.edit),
                       ],
                     ),
                   ),
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'delete',
                     child: Row(
                       children: [
-                        Icon(Icons.delete_outline_rounded, size: 18, color: AppTheme.accentRed),
-                        SizedBox(width: 10),
-                        Text('Delete', style: TextStyle(color: AppTheme.accentRed)),
+                        const Icon(Icons.delete_outline_rounded, size: 18, color: AppTheme.accentRed),
+                        const SizedBox(width: 10),
+                        Text(strings.delete, style: const TextStyle(color: AppTheme.accentRed)),
                       ],
                     ),
                   ),

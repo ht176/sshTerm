@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/localization/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/ssh_key_pair_model.dart';
 import '../../providers/app_providers.dart';
@@ -12,40 +13,41 @@ class KeyVaultScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final strings = ref.watch(stringsProvider);
     final keys = ref.watch(keyPairsProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Key Vault'),
+        title: Text(strings.keyVaultTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.add_rounded),
-            tooltip: 'Add Key',
+            tooltip: strings.newKeyPair,
             onPressed: () => KeyGenerateDialog.show(context),
           ),
         ],
       ),
       body: keys.isEmpty
-          ? _buildEmptyState(context)
+          ? _buildEmptyState(context, ref)
           : ListView.builder(
               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 0),
               itemCount: keys.length,
               itemBuilder: (context, index) {
                 final key = keys[index];
-                return _buildKeyCard(context, ref, key);
+                return _buildKeyCard(context, ref, key, strings);
               },
             ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppTheme.primary,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.vpn_key_rounded),
-        label: const Text('New Key Pair', style: TextStyle(fontWeight: FontWeight.w600)),
+        label: Text(strings.newKeyPair, style: const TextStyle(fontWeight: FontWeight.w600)),
         onPressed: () => KeyGenerateDialog.show(context),
       ),
     );
   }
 
-  Widget _buildKeyCard(BuildContext context, WidgetRef ref, SSHKeyPairModel key) {
+  Widget _buildKeyCard(BuildContext context, WidgetRef ref, SSHKeyPairModel key, AppStrings strings) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -117,38 +119,38 @@ class KeyVaultScreen extends ConsumerWidget {
                   icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textMuted),
                   color: AppTheme.surfaceElevated,
                   onSelected: (val) {
-                    if (val == 'view') _showPublicKeyDialog(context, key);
-                    if (val == 'copy') _copyPublicKey(context, key);
-                    if (val == 'delete') _confirmDeleteKey(context, ref, key);
+                    if (val == 'view') _showPublicKeyDialog(context, key, strings);
+                    if (val == 'copy') _copyPublicKey(context, key, strings);
+                    if (val == 'delete') _confirmDeleteKey(context, ref, key, strings);
                   },
                   itemBuilder: (ctx) => [
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'copy',
                       child: Row(
                         children: [
-                          Icon(Icons.copy_rounded, size: 18, color: AppTheme.textSecondary),
-                          SizedBox(width: 10),
-                          Text('Copy Public Key'),
+                          const Icon(Icons.copy_rounded, size: 18, color: AppTheme.textSecondary),
+                          const SizedBox(width: 10),
+                          Text(strings.copyPublicKey),
                         ],
                       ),
                     ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'view',
                       child: Row(
                         children: [
-                          Icon(Icons.visibility_rounded, size: 18, color: AppTheme.textSecondary),
-                          SizedBox(width: 10),
-                          Text('View Public Key'),
+                          const Icon(Icons.visibility_rounded, size: 18, color: AppTheme.textSecondary),
+                          const SizedBox(width: 10),
+                          Text(strings.viewPublicKey),
                         ],
                       ),
                     ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'delete',
                       child: Row(
                         children: [
-                          Icon(Icons.delete_outline_rounded, size: 18, color: AppTheme.accentRed),
-                          SizedBox(width: 10),
-                          Text('Delete Key', style: TextStyle(color: AppTheme.accentRed)),
+                          const Icon(Icons.delete_outline_rounded, size: 18, color: AppTheme.accentRed),
+                          const SizedBox(width: 10),
+                          Text(strings.deleteKey, style: const TextStyle(color: AppTheme.accentRed)),
                         ],
                       ),
                     ),
@@ -180,16 +182,16 @@ class KeyVaultScreen extends ConsumerWidget {
                     ),
                   ),
                   InkWell(
-                    onTap: () => _copyPublicKey(context, key),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    onTap: () => _copyPublicKey(context, key, strings),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       child: Row(
                         children: [
-                          Icon(Icons.copy_rounded, size: 14, color: AppTheme.primaryLight),
-                          SizedBox(width: 4),
+                          const Icon(Icons.copy_rounded, size: 14, color: AppTheme.primaryLight),
+                          const SizedBox(width: 4),
                           Text(
-                            'Copy Pub',
-                            style: TextStyle(fontSize: 11, color: AppTheme.primaryLight, fontWeight: FontWeight.bold),
+                            strings.copy,
+                            style: const TextStyle(fontSize: 11, color: AppTheme.primaryLight, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
@@ -204,17 +206,17 @@ class KeyVaultScreen extends ConsumerWidget {
     );
   }
 
-  void _copyPublicKey(BuildContext context, SSHKeyPairModel key) {
+  void _copyPublicKey(BuildContext context, SSHKeyPairModel key, AppStrings strings) {
     Clipboard.setData(ClipboardData(text: key.publicKeyOpenSsh));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Public key copied to clipboard! Paste into authorized_keys.'),
+      SnackBar(
+        content: Text(strings.pubKeyCopied),
         backgroundColor: AppTheme.accentGreen,
       ),
     );
   }
 
-  void _showPublicKeyDialog(BuildContext context, SSHKeyPairModel key) {
+  void _showPublicKeyDialog(BuildContext context, SSHKeyPairModel key, AppStrings strings) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -250,17 +252,17 @@ class KeyVaultScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close'),
+            child: Text(strings.close),
           ),
           ElevatedButton.icon(
             icon: const Icon(Icons.copy_rounded, size: 16),
-            label: const Text('Copy Key'),
+            label: Text(strings.copyPublicKey),
             onPressed: () {
               Clipboard.setData(ClipboardData(text: key.publicKeyOpenSsh));
               Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Public key copied to clipboard!'),
+                SnackBar(
+                  content: Text(strings.pubKeyCopied),
                   backgroundColor: AppTheme.accentGreen,
                 ),
               );
@@ -271,17 +273,17 @@ class KeyVaultScreen extends ConsumerWidget {
     );
   }
 
-  void _confirmDeleteKey(BuildContext context, WidgetRef ref, SSHKeyPairModel key) {
+  void _confirmDeleteKey(BuildContext context, WidgetRef ref, SSHKeyPairModel key, AppStrings strings) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.surface,
-        title: const Text('Delete Key Pair'),
-        content: Text('Are you sure you want to delete "${key.title}"? Any hosts using this key may lose access.'),
+        title: Text(strings.deleteKey),
+        content: Text(strings.deleteKeyConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: AppTheme.textMuted)),
+            child: Text(strings.cancel, style: const TextStyle(color: AppTheme.textMuted)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentRed),
@@ -289,14 +291,16 @@ class KeyVaultScreen extends ConsumerWidget {
               ref.read(keyPairsProvider.notifier).deleteKey(key.id);
               Navigator.pop(ctx);
             },
-            child: const Text('Delete'),
+            child: Text(strings.delete),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
+  Widget _buildEmptyState(BuildContext context, WidgetRef ref) {
+    final strings = ref.watch(stringsProvider);
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -315,23 +319,23 @@ class KeyVaultScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 18),
-          const Text(
-            'No SSH Keys Yet',
-            style: TextStyle(
+          Text(
+            strings.noKeysYet,
+            style: const TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.bold,
               color: AppTheme.textPrimary,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Generate Ed25519/RSA keys or import your existing private key.',
-            style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
+          Text(
+            strings.noKeysDesc,
+            style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
           ),
           const SizedBox(height: 20),
           ElevatedButton.icon(
             icon: const Icon(Icons.add_rounded),
-            label: const Text('Generate Key Pair'),
+            label: Text(strings.newKeyPair),
             onPressed: () => KeyGenerateDialog.show(context),
           ),
         ],

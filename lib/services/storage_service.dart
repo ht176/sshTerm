@@ -12,6 +12,8 @@ class StorageService {
   static const _snippetsKey = 'ssh_snippets_list';
   static const _knownHostsKey = 'ssh_known_hosts';
   static const _fontSizeKey = 'terminal_font_size';
+  static const _languageKey = 'app_language_pref';
+  static const _autoUpdateKey = 'app_auto_update_pref';
 
   final SharedPreferences _prefs;
   final FlutterSecureStorage _secureStorage;
@@ -191,5 +193,23 @@ class StorageService {
 
   Future<void> setTerminalFontSize(double size) async {
     await _prefs.setDouble(_fontSizeKey, size);
+  }
+
+  // ===================== LANGUAGE & UPDATES =====================
+
+  String getLanguage() {
+    return _prefs.getString(_languageKey) ?? 'zh'; // Default to Chinese as requested
+  }
+
+  Future<void> setLanguage(String lang) async {
+    await _prefs.setString(_languageKey, lang);
+  }
+
+  bool getAutoCheckUpdates() {
+    return _prefs.getBool(_autoUpdateKey) ?? true;
+  }
+
+  Future<void> setAutoCheckUpdates(bool enabled) async {
+    await _prefs.setBool(_autoUpdateKey, enabled);
   }
 }

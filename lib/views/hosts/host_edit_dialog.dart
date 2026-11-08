@@ -127,6 +127,7 @@ class _HostEditDialogState extends ConsumerState<HostEditDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = ref.watch(stringsProvider);
     final keys = ref.watch(keyPairsProvider);
     final isEdit = widget.hostToEdit != null;
 
@@ -151,7 +152,7 @@ class _HostEditDialogState extends ConsumerState<HostEditDialog> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      isEdit ? 'Edit Host' : 'New SSH Host',
+                      isEdit ? strings.editHost : strings.newHost,
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -169,10 +170,10 @@ class _HostEditDialogState extends ConsumerState<HostEditDialog> {
                 // Label
                 CustomTextField(
                   controller: _labelController,
-                  label: 'Label',
-                  hint: 'e.g. My Home NAS, Ubuntu Prod',
+                  label: strings.label,
+                  hint: strings.labelHint,
                   prefixIcon: Icons.label_outline_rounded,
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Please enter a label' : null,
+                  validator: (v) => v == null || v.trim().isEmpty ? strings.required : null,
                 ),
                 const SizedBox(height: 14),
 
@@ -184,10 +185,10 @@ class _HostEditDialogState extends ConsumerState<HostEditDialog> {
                       flex: 3,
                       child: CustomTextField(
                         controller: _hostnameController,
-                        label: 'Hostname / IP',
-                        hint: '192.168.1.100 or server.com',
+                        label: strings.hostname,
+                        hint: '192.168.1.100 / server.com',
                         prefixIcon: Icons.dns_outlined,
-                        validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                        validator: (v) => v == null || v.trim().isEmpty ? strings.required : null,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -195,7 +196,7 @@ class _HostEditDialogState extends ConsumerState<HostEditDialog> {
                       flex: 1,
                       child: CustomTextField(
                         controller: _portController,
-                        label: 'Port',
+                        label: strings.port,
                         hint: '22',
                         keyboardType: TextInputType.number,
                         validator: (v) {
@@ -212,17 +213,17 @@ class _HostEditDialogState extends ConsumerState<HostEditDialog> {
                 // Username
                 CustomTextField(
                   controller: _usernameController,
-                  label: 'Username',
+                  label: strings.username,
                   hint: 'root',
                   prefixIcon: Icons.person_outline_rounded,
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                  validator: (v) => v == null || v.trim().isEmpty ? strings.required : null,
                 ),
                 const SizedBox(height: 18),
 
                 // Auth Type Switch
-                const Text(
-                  'Authentication Method',
-                  style: TextStyle(
+                Text(
+                  strings.authMethod,
+                  style: const TextStyle(
                     color: AppTheme.textSecondary,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -233,12 +234,12 @@ class _HostEditDialogState extends ConsumerState<HostEditDialog> {
                   children: [
                     Expanded(
                       child: ChoiceChip(
-                        label: const Row(
+                        label: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.password_rounded, size: 16),
-                            SizedBox(width: 6),
-                            Text('Password'),
+                            const Icon(Icons.password_rounded, size: 16),
+                            const SizedBox(width: 6),
+                            Text(strings.authPassword),
                           ],
                         ),
                         selected: _authType == AuthType.password,
@@ -250,12 +251,12 @@ class _HostEditDialogState extends ConsumerState<HostEditDialog> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: ChoiceChip(
-                        label: const Row(
+                        label: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.vpn_key_rounded, size: 16),
-                            SizedBox(width: 6),
-                            Text('SSH Key'),
+                            const Icon(Icons.vpn_key_rounded, size: 16),
+                            const SizedBox(width: 6),
+                            Text(strings.authKey),
                           ],
                         ),
                         selected: _authType == AuthType.key,
@@ -272,8 +273,8 @@ class _HostEditDialogState extends ConsumerState<HostEditDialog> {
                 if (_authType == AuthType.password)
                   CustomTextField(
                     controller: _passwordController,
-                    label: 'Password',
-                    hint: 'Enter SSH password',
+                    label: strings.password,
+                    hint: strings.passwordHint,
                     obscureText: _obscurePassword,
                     prefixIcon: Icons.lock_outline_rounded,
                     suffixIcon: IconButton(
@@ -289,9 +290,9 @@ class _HostEditDialogState extends ConsumerState<HostEditDialog> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Select SSH Key Pair',
-                        style: TextStyle(
+                      Text(
+                        strings.selectKey,
+                        style: const TextStyle(
                           color: AppTheme.textSecondary,
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -306,9 +307,9 @@ class _HostEditDialogState extends ConsumerState<HostEditDialog> {
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(color: AppTheme.surfaceBorder),
                           ),
-                          child: const Text(
-                            'No SSH keys found. Please generate or import a key in the Keys tab first.',
-                            style: TextStyle(color: AppTheme.accentOrange, fontSize: 13),
+                          child: Text(
+                            strings.noKeysPrompt,
+                            style: const TextStyle(color: AppTheme.accentOrange, fontSize: 13),
                           ),
                         )
                       else
@@ -332,16 +333,16 @@ class _HostEditDialogState extends ConsumerState<HostEditDialog> {
                 // Group
                 CustomTextField(
                   controller: _groupController,
-                  label: 'Group / Tag',
-                  hint: 'e.g. NAS, Cloud, Prod, Dev',
+                  label: strings.groupTag,
+                  hint: strings.groupHint,
                   prefixIcon: Icons.folder_open_rounded,
                 ),
                 const SizedBox(height: 18),
 
                 // Color Tag Picker
-                const Text(
-                  'Color Tag',
-                  style: TextStyle(
+                Text(
+                  strings.colorTag,
+                  style: const TextStyle(
                     color: AppTheme.textSecondary,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -375,9 +376,9 @@ class _HostEditDialogState extends ConsumerState<HostEditDialog> {
                 const SizedBox(height: 18),
 
                 // OS Icon Picker
-                const Text(
-                  'Icon',
-                  style: TextStyle(
+                Text(
+                  strings.icon,
+                  style: const TextStyle(
                     color: AppTheme.textSecondary,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -433,7 +434,7 @@ class _HostEditDialogState extends ConsumerState<HostEditDialog> {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: _save,
-                    child: Text(isEdit ? 'Save Changes' : 'Add Host'),
+                    child: Text(isEdit ? strings.saveChanges : strings.addHost),
                   ),
                 ),
                 const SizedBox(height: 10),

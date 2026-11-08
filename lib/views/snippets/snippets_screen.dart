@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../core/localization/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/snippet_model.dart';
 import '../../providers/app_providers.dart';
@@ -13,21 +14,22 @@ class SnippetsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final strings = ref.watch(stringsProvider);
     final snippets = ref.watch(snippetsProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Snippets'),
+        title: Text(strings.snippetsTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.add_rounded),
-            tooltip: 'Add Snippet',
-            onPressed: () => _showSnippetDialog(context, ref),
+            tooltip: strings.newSnippet,
+            onPressed: () => _showSnippetDialog(context, ref, strings),
           ),
         ],
       ),
       body: snippets.isEmpty
-          ? _buildEmptyState(context, ref)
+          ? _buildEmptyState(context, ref, strings)
           : ListView.builder(
               padding: const EdgeInsets.symmetric(vertical: 10),
               itemCount: snippets.length,
@@ -79,12 +81,12 @@ class SnippetsScreen extends ConsumerWidget {
                             ),
                             IconButton(
                               icon: const Icon(Icons.copy_rounded, size: 18, color: AppTheme.textSecondary),
-                              tooltip: 'Copy command',
+                              tooltip: strings.copy,
                               onPressed: () {
                                 Clipboard.setData(ClipboardData(text: s.command));
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Command copied to clipboard!'),
+                                  SnackBar(
+                                    content: Text(strings.commandCopied),
                                     backgroundColor: AppTheme.accentGreen,
                                   ),
                                 );
@@ -94,27 +96,27 @@ class SnippetsScreen extends ConsumerWidget {
                               icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textMuted),
                               color: AppTheme.surfaceElevated,
                               onSelected: (val) {
-                                if (val == 'edit') _showSnippetDialog(context, ref, snippet: s);
-                                if (val == 'delete') _confirmDelete(context, ref, s);
+                                if (val == 'edit') _showSnippetDialog(context, ref, strings, snippet: s);
+                                if (val == 'delete') _confirmDelete(context, ref, s, strings);
                               },
                               itemBuilder: (ctx) => [
-                                const PopupMenuItem(
+                                PopupMenuItem(
                                   value: 'edit',
                                   child: Row(
                                     children: [
-                                      Icon(Icons.edit_rounded, size: 18, color: AppTheme.textSecondary),
-                                      SizedBox(width: 10),
-                                      Text('Edit'),
+                                      const Icon(Icons.edit_rounded, size: 18, color: AppTheme.textSecondary),
+                                      const SizedBox(width: 10),
+                                      Text(strings.edit),
                                     ],
                                   ),
                                 ),
-                                const PopupMenuItem(
+                                PopupMenuItem(
                                   value: 'delete',
                                   child: Row(
                                     children: [
-                                      Icon(Icons.delete_outline_rounded, size: 18, color: AppTheme.accentRed),
-                                      SizedBox(width: 10),
-                                      Text('Delete', style: TextStyle(color: AppTheme.accentRed)),
+                                      const Icon(Icons.delete_outline_rounded, size: 18, color: AppTheme.accentRed),
+                                      const SizedBox(width: 10),
+                                      Text(strings.delete, style: const TextStyle(color: AppTheme.accentRed)),
                                     ],
                                   ),
                                 ),
@@ -150,13 +152,13 @@ class SnippetsScreen extends ConsumerWidget {
         backgroundColor: AppTheme.primary,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_rounded),
-        label: const Text('New Snippet', style: TextStyle(fontWeight: FontWeight.w600)),
-        onPressed: () => _showSnippetDialog(context, ref),
+        label: Text(strings.newSnippet, style: const TextStyle(fontWeight: FontWeight.w600)),
+        onPressed: () => _showSnippetDialog(context, ref, strings),
       ),
     );
   }
 
-  void _showSnippetDialog(BuildContext context, WidgetRef ref, {SnippetModel? snippet}) {
+  void _showSnippetDialog(BuildContext context, WidgetRef ref, AppStrings strings, {SnippetModel? snippet}) {
     final titleController = TextEditingController(text: snippet?.title ?? '');
     final commandController = TextEditingController(text: snippet?.command ?? '');
     final categoryController = TextEditingController(text: snippet?.category ?? 'General');
@@ -185,7 +187,7 @@ class SnippetsScreen extends ConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      snippet != null ? 'Edit Snippet' : 'New Snippet',
+                      snippet != null ? strings.editSnippet : strings.newSnippet,
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -201,23 +203,23 @@ class SnippetsScreen extends ConsumerWidget {
                 const SizedBox(height: 16),
                 CustomTextField(
                   controller: titleController,
-                  label: 'Snippet Title',
-                  hint: 'e.g. Restart Docker Engine, View Nginx Log',
+                  label: strings.snippetTitle,
+                  hint: strings.snippetTitleHint,
                   prefixIcon: Icons.title_rounded,
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                  validator: (v) => v == null || v.trim().isEmpty ? strings.required : null,
                 ),
                 const SizedBox(height: 14),
                 CustomTextField(
                   controller: commandController,
-                  label: 'Command / Script',
-                  hint: 'e.g. sudo systemctl restart docker',
+                  label: strings.snippetCommand,
+                  hint: 'docker ps / systemctl status ...',
                   maxLines: 3,
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                  validator: (v) => v == null || v.trim().isEmpty ? strings.required : null,
                 ),
                 const SizedBox(height: 14),
                 CustomTextField(
                   controller: categoryController,
-                  label: 'Category',
+                  label: strings.snippetCategory,
                   hint: 'General, Docker, System, Network',
                   prefixIcon: Icons.category_outlined,
                 ),
@@ -238,7 +240,7 @@ class SnippetsScreen extends ConsumerWidget {
                       ref.read(snippetsProvider.notifier).addOrUpdateSnippet(s);
                       Navigator.pop(ctx);
                     },
-                    child: Text(snippet != null ? 'Save Changes' : 'Add Snippet'),
+                    child: Text(snippet != null ? strings.saveChanges : strings.save),
                   ),
                 ),
               ],
@@ -249,17 +251,17 @@ class SnippetsScreen extends ConsumerWidget {
     );
   }
 
-  void _confirmDelete(BuildContext context, WidgetRef ref, SnippetModel s) {
+  void _confirmDelete(BuildContext context, WidgetRef ref, SnippetModel s, AppStrings strings) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.surface,
-        title: const Text('Delete Snippet'),
-        content: Text('Are you sure you want to delete "${s.title}"?'),
+        title: Text(strings.delete),
+        content: Text(strings.deleteSnippetConfirm(s.title)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: AppTheme.textMuted)),
+            child: Text(strings.cancel, style: const TextStyle(color: AppTheme.textMuted)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentRed),
@@ -267,14 +269,14 @@ class SnippetsScreen extends ConsumerWidget {
               ref.read(snippetsProvider.notifier).deleteSnippet(s.id);
               Navigator.pop(ctx);
             },
-            child: const Text('Delete'),
+            child: Text(strings.delete),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildEmptyState(BuildContext context, WidgetRef ref) {
+  Widget _buildEmptyState(BuildContext context, WidgetRef ref, AppStrings strings) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -293,24 +295,24 @@ class SnippetsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 18),
-          const Text(
-            'No Snippets Yet',
-            style: TextStyle(
+          Text(
+            strings.noSnippetsYet,
+            style: const TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.bold,
               color: AppTheme.textPrimary,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Save frequently used shell commands for one-tap execution in terminal.',
-            style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
+          Text(
+            strings.noSnippetsDesc,
+            style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
           ),
           const SizedBox(height: 20),
           ElevatedButton.icon(
             icon: const Icon(Icons.add_rounded),
-            label: const Text('Create Snippet'),
-            onPressed: () => _showSnippetDialog(context, ref),
+            label: Text(strings.newSnippet),
+            onPressed: () => _showSnippetDialog(context, ref, strings),
           ),
         ],
       ),

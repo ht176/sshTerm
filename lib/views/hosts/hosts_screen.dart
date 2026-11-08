@@ -27,18 +27,23 @@ class _HostsScreenState extends ConsumerState<HostsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = ref.watch(stringsProvider);
     final hosts = ref.watch(hostsProvider);
     final selectedGroup = ref.watch(selectedGroupProvider);
 
     // Extract all unique groups
-    final groups = <String>{'All'};
+    final groups = <String>{strings.allGroup};
     for (final h in hosts) {
-      if (h.group.isNotEmpty) groups.add(h.group);
+      if (h.group.isNotEmpty && h.group != 'All' && h.group != '全部') {
+        groups.add(h.group);
+      }
     }
 
     // Filter hosts by search & group
     final filteredHosts = hosts.where((h) {
-      final matchesGroup = selectedGroup == 'All' || h.group == selectedGroup;
+      final matchesGroup = selectedGroup == strings.allGroup ||
+          selectedGroup == 'All' ||
+          h.group == selectedGroup;
       final q = _searchQuery.toLowerCase();
       final matchesQuery = q.isEmpty ||
           h.label.toLowerCase().contains(q) ||
@@ -49,11 +54,11 @@ class _HostsScreenState extends ConsumerState<HostsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Hosts'),
+        title: Text(strings.hostsTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.add_rounded),
-            tooltip: 'Add Host',
+            tooltip: strings.newHost,
             onPressed: () => HostEditDialog.show(context),
           ),
         ],
@@ -68,7 +73,7 @@ class _HostsScreenState extends ConsumerState<HostsScreen> {
               onChanged: (val) => setState(() => _searchQuery = val),
               style: const TextStyle(fontSize: 14),
               decoration: InputDecoration(
-                hintText: 'Search hosts, IP, username...',
+                hintText: strings.searchHostsHint,
                 prefixIcon: const Icon(Icons.search_rounded, size: 20, color: AppTheme.textMuted),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
@@ -93,7 +98,8 @@ class _HostsScreenState extends ConsumerState<HostsScreen> {
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: groups.map((grp) {
-                  final isSelected = selectedGroup == grp;
+                  final isSelected = selectedGroup == grp ||
+                      (grp == strings.allGroup && selectedGroup == 'All');
                   return Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: FilterChip(
@@ -143,7 +149,7 @@ class _HostsScreenState extends ConsumerState<HostsScreen> {
         backgroundColor: AppTheme.primary,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_rounded),
-        label: const Text('New Host', style: TextStyle(fontWeight: FontWeight.w600)),
+        label: Text(strings.newHost, style: const TextStyle(fontWeight: FontWeight.w600)),
         onPressed: () => HostEditDialog.show(context),
       ),
     );
@@ -158,16 +164,17 @@ class _HostsScreenState extends ConsumerState<HostsScreen> {
   }
 
   void _confirmDelete(BuildContext context, SSHHost host) {
+    final strings = ref.read(stringsProvider);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.surface,
-        title: const Text('Delete Host'),
-        content: Text('Are you sure you want to delete "${host.label}"?'),
+        title: Text(strings.deleteHostTitle),
+        content: Text(strings.deleteHostConfirm(host.label)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: AppTheme.textMuted)),
+            child: Text(strings.cancel, style: const TextStyle(color: AppTheme.textMuted)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentRed),
@@ -175,7 +182,7 @@ class _HostsScreenState extends ConsumerState<HostsScreen> {
               ref.read(hostsProvider.notifier).deleteHost(host.id);
               Navigator.pop(ctx);
             },
-            child: const Text('Delete'),
+            child: Text(strings.delete),
           ),
         ],
       ),
@@ -183,6 +190,8 @@ class _HostsScreenState extends ConsumerState<HostsScreen> {
   }
 
   Widget _buildEmptyState(BuildContext context, bool isTotalEmpty) {
+    final strings = ref.watch(stringsProvider);
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -202,7 +211,7 @@ class _HostsScreenState extends ConsumerState<HostsScreen> {
           ),
           const SizedBox(height: 18),
           Text(
-            isTotalEmpty ? 'No SSH Hosts Yet' : 'No Matching Hosts Found',
+            isTotalEmpty ? strings.noHostsYet : strings.searchHostsHint,
             style: const TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.bold,
@@ -211,16 +220,14 @@ class _HostsScreenState extends ConsumerState<HostsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            isTotalEmpty
-                ? 'Add your Linux server, NAS, or Cloud VPS to start.'
-                : 'Try adjusting your search query or group filter.',
+            isTotalEmpty ? strings.noHostsDesc : '',
             style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
           ),
           if (isTotalEmpty) ...[
             const SizedBox(height: 20),
             ElevatedButton.icon(
               icon: const Icon(Icons.add_rounded),
-              label: const Text('Add First Host'),
+              label: Text(strings.addFirstHost),
               onPressed: () => HostEditDialog.show(context),
             ),
           ],

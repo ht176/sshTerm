@@ -33,7 +33,7 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
   late final TerminalAccessoryController _accessoryController;
   SSHConnectionSession? _session;
   ConnectionState _connectionState = ConnectionState.connecting;
-  String _statusMessage = 'Initializing connection...';
+  String _statusMessage = 'Connecting...';
   StreamSubscription? _stdoutSub;
   StreamSubscription? _stderrSub;
 
@@ -68,12 +68,14 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
   }
 
   Future<void> _startConnection() async {
+    final strings = ref.read(stringsProvider);
+
     setState(() {
       _connectionState = ConnectionState.connecting;
-      _statusMessage = 'Connecting to ${widget.host.hostname}:${widget.host.port}...';
+      _statusMessage = strings.connectingTo(widget.host.username, widget.host.hostname, widget.host.port);
     });
 
-    _terminal.write('\x1b[38;5;39m[sshTerm] Connecting to ${widget.host.username}@${widget.host.hostname}:${widget.host.port}...\x1b[0m\r\n');
+    _terminal.write('\x1b[38;5;39m[sshTerm] $_statusMessage\x1b[0m\r\n');
 
     try {
       final storage = ref.read(storageServiceProvider);
@@ -115,6 +117,7 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
             port: port,
             keyType: keyType,
             fingerprint: fingerprint,
+            strings: strings,
           );
 
           if (trusted) {
@@ -134,10 +137,10 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
 
       setState(() {
         _connectionState = ConnectionState.connected;
-        _statusMessage = 'Connected';
+        _statusMessage = strings.connected;
       });
 
-      _terminal.write('\x1b[38;5;48m[sshTerm] Connection established.\x1b[0m\r\n\r\n');
+      _terminal.write('\x1b[38;5;48m[sshTerm] ${strings.connected}.\x1b[0m\r\n\r\n');
 
       // Update last connected timestamp
       ref.read(hostsProvider.notifier).updateLastConnected(widget.host.id);
@@ -159,7 +162,7 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
           .listen(
             (data) => _terminal.write(data),
             onError: (err) => _onSessionClosed('Stream error: $err'),
-            onDone: () => _onSessionClosed('Remote host closed session.'),
+            onDone: () => _onSessionClosed('Session closed.'),
           );
 
       _stderrSub = session.session.stderr
@@ -168,7 +171,7 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
           .listen(
             (data) => _terminal.write(data),
             onError: (err) => _onSessionClosed('Stream error: $err'),
-            onDone: () => _onSessionClosed('Remote host closed session.'),
+            onDone: () => _onSessionClosed('Session closed.'),
           );
     } catch (e) {
       if (!mounted) return;
@@ -182,9 +185,10 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
 
   void _onSessionClosed(String reason) {
     if (!mounted) return;
+    final strings = ref.read(stringsProvider);
     setState(() {
       _connectionState = ConnectionState.disconnected;
-      _statusMessage = 'Disconnected';
+      _statusMessage = strings.disconnected;
     });
     _terminal.write('\r\n\x1b[38;5;214m[sshTerm] $reason\x1b[0m\r\n');
   }
@@ -197,6 +201,7 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
   }
 
   void _showSnippetsSheet() {
+    final strings = ref.read(stringsProvider);
     final snippets = ref.read(snippetsProvider);
 
     showModalBottomSheet(
@@ -218,9 +223,9 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Snippets / Quick Commands',
-                        style: TextStyle(
+                      Text(
+                        strings.snippetsDrawer,
+                        style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.bold,
                           color: AppTheme.textPrimary,
@@ -235,12 +240,12 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
                 ),
                 const Divider(color: AppTheme.surfaceBorder),
                 if (snippets.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.all(24),
+                  Padding(
+                    padding: const EdgeInsets.all(24),
                     child: Center(
                       child: Text(
-                        'No snippets saved yet.',
-                        style: TextStyle(color: AppTheme.textMuted),
+                        strings.noSnippetsYet,
+                        style: const TextStyle(color: AppTheme.textMuted),
                       ),
                     ),
                   )
@@ -305,6 +310,7 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = ref.watch(stringsProvider);
     final currentFontSize = ref.watch(fontSizeProvider);
 
     return Scaffold(
@@ -339,7 +345,7 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
           // Font size quick adjustment
           IconButton(
             icon: const Icon(Icons.text_decrease_rounded, size: 20),
-            tooltip: 'Decrease font size',
+            tooltip: strings.decreaseFont,
             onPressed: () {
               if (currentFontSize > 10) {
                 ref.read(fontSizeProvider.notifier).setFontSize(currentFontSize - 1);
@@ -348,7 +354,7 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.text_increase_rounded, size: 20),
-            tooltip: 'Increase font size',
+            tooltip: strings.increaseFont,
             onPressed: () {
               if (currentFontSize < 24) {
                 ref.read(fontSizeProvider.notifier).setFontSize(currentFontSize + 1);
@@ -358,7 +364,7 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
           if (_connectionState != ConnectionState.connected)
             IconButton(
               icon: const Icon(Icons.refresh_rounded, color: AppTheme.primaryLight),
-              tooltip: 'Reconnect',
+              tooltip: strings.reconnect,
               onPressed: _reconnect,
             ),
         ],
@@ -396,9 +402,9 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
                     if (_connectionState != ConnectionState.connecting)
                       GestureDetector(
                         onTap: _reconnect,
-                        child: const Text(
-                          'Retry',
-                          style: TextStyle(
+                        child: Text(
+                          strings.retry,
+                          style: const TextStyle(
                             color: AppTheme.primaryLight,
                             fontWeight: FontWeight.bold,
                             fontSize: 12,

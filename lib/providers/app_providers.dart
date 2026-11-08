@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/localization/app_strings.dart';
 import '../models/snippet_model.dart';
 import '../models/ssh_host.dart';
 import '../models/ssh_key_pair_model.dart';
@@ -8,6 +9,58 @@ import '../services/storage_service.dart';
 final storageServiceProvider = Provider<StorageService>((ref) {
   throw UnimplementedError('StorageService must be initialized before runApp');
 });
+
+// ===================== LANGUAGE & LOCALIZATION =====================
+
+class LanguageNotifier extends Notifier<AppLanguage> {
+  @override
+  AppLanguage build() {
+    final storage = ref.watch(storageServiceProvider);
+    final saved = storage.getLanguage();
+    switch (saved) {
+      case 'en':
+        return AppLanguage.en;
+      case 'system':
+        return AppLanguage.system;
+      case 'zh':
+      default:
+        return AppLanguage.zh;
+    }
+  }
+
+  void setLanguage(AppLanguage lang) {
+    state = lang;
+    ref.read(storageServiceProvider).setLanguage(lang.name);
+  }
+}
+
+final languageProvider = NotifierProvider<LanguageNotifier, AppLanguage>(
+  LanguageNotifier.new,
+);
+
+final stringsProvider = Provider<AppStrings>((ref) {
+  final lang = ref.watch(languageProvider);
+  return AppStrings(lang);
+});
+
+// ===================== AUTO UPDATES =====================
+
+class AutoUpdateNotifier extends Notifier<bool> {
+  @override
+  bool build() {
+    final storage = ref.watch(storageServiceProvider);
+    return storage.getAutoCheckUpdates();
+  }
+
+  void setAutoUpdate(bool enabled) {
+    state = enabled;
+    ref.read(storageServiceProvider).setAutoCheckUpdates(enabled);
+  }
+}
+
+final autoUpdateProvider = NotifierProvider<AutoUpdateNotifier, bool>(
+  AutoUpdateNotifier.new,
+);
 
 // ===================== HOSTS =====================
 
