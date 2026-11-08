@@ -97,6 +97,11 @@ class AppStrings {
       ? '无法自动确认主机 "$host:$port" 的真实性，请核对指纹以防中间人劫持：'
       : 'The authenticity of host "$host:$port" cannot be established automatically:';
   String get trustAndConnect => isZh ? '信任并连接' : 'Trust & Connect';
+  String get copyError => isZh ? '复制报错' : 'Copy Error';
+  String get copyTerminalLog => isZh ? '复制终端日志' : 'Copy Logs';
+  String get errorDetails => isZh ? '错误详细信息' : 'Error Details';
+  String get errorCopied => isZh ? '错误信息已复制到剪贴板！' : 'Error message copied to clipboard!';
+  String get terminalLogCopied => isZh ? '终端输出日志已复制到剪贴板！' : 'Terminal logs copied to clipboard!';
 
   // Snippets
   String get snippetsTitle => isZh ? '快捷命令' : 'Snippets';

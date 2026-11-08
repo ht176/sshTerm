@@ -31,6 +31,8 @@ class TerminalScreen extends ConsumerStatefulWidget {
 class _TerminalScreenState extends ConsumerState<TerminalScreen> {
   late final Terminal _terminal;
   late final TerminalAccessoryController _accessoryController;
+  final StringBuffer _terminalLogBuffer = StringBuffer();
+  String? _lastErrorDetails;
   SSHConnectionSession? _session;
   ConnectionState _connectionState = ConnectionState.connecting;
   String _statusMessage = 'Connecting...';
@@ -67,15 +69,23 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
     super.dispose();
   }
 
+  void _appendLog(String text) {
+    _terminal.write(text);
+    // Strip ANSI escape codes for clean clipboard text
+    final clean = text.replaceAll(RegExp(r'\x1b\[[0-9;]*[a-zA-Z]'), '');
+    _terminalLogBuffer.write(clean);
+  }
+
   Future<void> _startConnection() async {
     final strings = ref.read(stringsProvider);
 
     setState(() {
       _connectionState = ConnectionState.connecting;
+      _lastErrorDetails = null;
       _statusMessage = strings.connectingTo(widget.host.username, widget.host.hostname, widget.host.port);
     });
 
-    _terminal.write('\x1b[38;5;39m[sshTerm] $_statusMessage\x1b[0m\r\n');
+    _appendLog('\x1b[38;5;39m[sshTerm] $_statusMessage\x1b[0m\r\n');
 
     try {
       final storage = ref.read(storageServiceProvider);
@@ -140,7 +150,7 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
         _statusMessage = strings.connected;
       });
 
-      _terminal.write('\x1b[38;5;48m[sshTerm] ${strings.connected}.\x1b[0m\r\n\r\n');
+      _appendLog('\x1b[38;5;48m[sshTerm] ${strings.connected}.\x1b[0m\r\n\r\n');
 
       // Update last connected timestamp
       ref.read(hostsProvider.notifier).updateLastConnected(widget.host.id);
@@ -160,7 +170,7 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
           .cast<List<int>>()
           .transform(const Utf8Decoder(allowMalformed: true))
           .listen(
-            (data) => _terminal.write(data),
+            (data) => _appendLog(data),
             onError: (err) => _onSessionClosed('Stream error: $err'),
             onDone: () => _onSessionClosed('Session closed.'),
           );
@@ -169,17 +179,19 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
           .cast<List<int>>()
           .transform(const Utf8Decoder(allowMalformed: true))
           .listen(
-            (data) => _terminal.write(data),
+            (data) => _appendLog(data),
             onError: (err) => _onSessionClosed('Stream error: $err'),
             onDone: () => _onSessionClosed('Session closed.'),
           );
-    } catch (e) {
+    } catch (e, stack) {
       if (!mounted) return;
+      final errorStr = e.toString();
       setState(() {
         _connectionState = ConnectionState.error;
-        _statusMessage = 'Error: $e';
+        _statusMessage = errorStr;
+        _lastErrorDetails = '$errorStr\n\nStack Trace:\n$stack';
       });
-      _terminal.write('\r\n\x1b[38;5;196m[sshTerm Error] $e\x1b[0m\r\n');
+      _appendLog('\r\n\x1b[38;5;196m[sshTerm Error] $e\x1b[0m\r\n');
     }
   }
 
@@ -190,14 +202,97 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
       _connectionState = ConnectionState.disconnected;
       _statusMessage = strings.disconnected;
     });
-    _terminal.write('\r\n\x1b[38;5;214m[sshTerm] $reason\x1b[0m\r\n');
+    _appendLog('\r\n\x1b[38;5;214m[sshTerm] $reason\x1b[0m\r\n');
   }
 
   void _reconnect() {
     _session?.close();
     _terminal.buffer.clear();
     _terminal.buffer.setCursor(0, 0);
+    _terminalLogBuffer.clear();
     _startConnection();
+  }
+
+  void _copyErrorToClipboard() {
+    final strings = ref.read(stringsProvider);
+    final text = _lastErrorDetails ?? _statusMessage;
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(strings.errorCopied),
+        backgroundColor: AppTheme.accentGreen,
+      ),
+    );
+  }
+
+  void _copyAllLogsToClipboard() {
+    final strings = ref.read(stringsProvider);
+    final text = _terminalLogBuffer.toString();
+    Clipboard.setData(ClipboardData(text: text.isNotEmpty ? text : _statusMessage));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(strings.terminalLogCopied),
+        backgroundColor: AppTheme.accentGreen,
+      ),
+    );
+  }
+
+  void _showErrorDetailsDialog() {
+    final strings = ref.read(stringsProvider);
+    final details = _lastErrorDetails ?? _statusMessage;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surface,
+        title: Row(
+          children: [
+            const Icon(Icons.error_outline_rounded, color: AppTheme.accentRed),
+            const SizedBox(width: 8),
+            Text(strings.errorDetails),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceElevated,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppTheme.surfaceBorder),
+                ),
+                child: SelectableText(
+                  details,
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 12,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(strings.close),
+          ),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.copy_rounded, size: 16),
+            label: Text(strings.copyError),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _copyErrorToClipboard();
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   void _showSnippetsSheet() {
@@ -342,6 +437,12 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
           ],
         ),
         actions: [
+          // Copy logs action
+          IconButton(
+            icon: const Icon(Icons.copy_all_rounded, size: 20),
+            tooltip: strings.copyTerminalLog,
+            onPressed: _copyAllLogsToClipboard,
+          ),
           // Font size quick adjustment
           IconButton(
             icon: const Icon(Icons.text_decrease_rounded, size: 20),
@@ -392,25 +493,67 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
                       const Icon(Icons.warning_amber_rounded, size: 16, color: AppTheme.accentRed),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: Text(
-                        _statusMessage,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 12, color: AppTheme.textPrimary),
+                      child: GestureDetector(
+                        onTap: _connectionState == ConnectionState.error ? _showErrorDetailsDialog : null,
+                        child: Text(
+                          _statusMessage,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12, color: AppTheme.textPrimary),
+                        ),
                       ),
                     ),
-                    if (_connectionState != ConnectionState.connecting)
-                      GestureDetector(
-                        onTap: _reconnect,
-                        child: Text(
-                          strings.retry,
-                          style: const TextStyle(
-                            color: AppTheme.primaryLight,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                    if (_connectionState == ConnectionState.error) ...[
+                      const SizedBox(width: 8),
+                      // Copy Error Button
+                      InkWell(
+                        onTap: _copyErrorToClipboard,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppTheme.surfaceElevated,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: AppTheme.surfaceBorder),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.copy_rounded, size: 12, color: AppTheme.primaryLight),
+                              const SizedBox(width: 4),
+                              Text(
+                                strings.copyError,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppTheme.primaryLight,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
+                    ],
+                    if (_connectionState != ConnectionState.connecting) ...[
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: _reconnect,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            strings.retry,
+                            style: const TextStyle(
+                              color: AppTheme.primaryLight,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
